@@ -6,7 +6,7 @@ import { useConfigStore } from '@/stores/configStore.js'
 
 const weatherStore = useWeatherStore()
 const configStore = useConfigStore()
-const { cities, isLoading } = storeToRefs(weatherStore)
+const { cities, isLoading, error } = storeToRefs(weatherStore)
 
 // 섭씨 값을 현재 표시 단위로 변환
 const toDisplay = (celsius) => {
@@ -70,6 +70,8 @@ onMounted(() => {
     </header>
 
     <p v-if="isLoading" class="ws-loading glass-card">불러오는 중입니다...</p>
+
+    <p v-else-if="error" class="ws-loading ws-error glass-card">{{ error }}</p>
 
     <template v-else-if="cities.length > 0">
       <!-- 요약 지표 -->
@@ -173,6 +175,9 @@ onMounted(() => {
   padding: 40px 0;
   text-align: center;
   color: #909399;
+}
+.ws-error {
+  color: #f56c6c;
 }
 
 /* 요약 지표 */

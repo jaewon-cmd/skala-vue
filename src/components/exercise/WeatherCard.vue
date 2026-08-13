@@ -23,13 +23,21 @@ const emit = defineEmits(['select-card', 'click-detail'])
 
 const configStore = useConfigStore()
 
-// 섭씨 값을 현재 표시 단위로 변환
+// 섭씨 값을 현재 표시 단위로 변환.
+// 이 카드는 이전 과제의 목데이터로도 쓰여서 일부 항목이 없을 수 있다.
+// 값이 없으면 NaN 대신 null을 돌려주고, 화면에서는 '-'로 보여 준다.
 const toDisplay = (celsius) => {
+  if (!Number.isFinite(celsius)) {
+    return null
+  }
   if (configStore.unit === 'fahrenheit') {
     return Math.round((celsius * 9) / 5 + 32)
   }
   return celsius
 }
+
+// 값이 없을 때 단위만 덩그러니 남지 않도록 묶어서 처리한다
+const withUnit = (value, unit) => (value == null ? '-' : `${value}${unit}`)
 
 // 표시 단위에 맞춘 기온 / 체감온도
 const displayTemp = computed(() => toDisplay(props.city.temp))
@@ -82,7 +90,7 @@ const shortDate = (date) => {
       </div>
     </template>
 
-    <p class="wc-temp">{{ displayTemp }}{{ configStore.unitSymbol }}</p>
+    <p class="wc-temp">{{ withUnit(displayTemp, configStore.unitSymbol) }}</p>
 
     <div class="wc-badge">
       <el-tag v-if="isRainy(city.status)" type="primary" effect="dark" round> ☔ 우산 챙기세요 </el-tag>
@@ -94,15 +102,15 @@ const shortDate = (date) => {
     <div class="wc-metrics">
       <div class="wc-metric">
         <span class="wc-metric-label">체감</span>
-        <span class="wc-metric-value">{{ displayFeelsLike }}{{ configStore.unitSymbol }}</span>
+        <span class="wc-metric-value">{{ withUnit(displayFeelsLike, configStore.unitSymbol) }}</span>
       </div>
       <div class="wc-metric">
         <span class="wc-metric-label">습도</span>
-        <span class="wc-metric-value">{{ city.humidity }}%</span>
+        <span class="wc-metric-value">{{ withUnit(city.humidity, '%') }}</span>
       </div>
       <div class="wc-metric">
         <span class="wc-metric-label">바람</span>
-        <span class="wc-metric-value">{{ city.wind }}m/s</span>
+        <span class="wc-metric-value">{{ withUnit(city.wind, 'm/s') }}</span>
       </div>
     </div>
 
@@ -113,7 +121,7 @@ const shortDate = (date) => {
         <el-tag :type="gradeTagType(air.pm10Grade)" size="small" effect="light"> PM10 {{ air.pm10 }} · {{ air.pm10Grade }} </el-tag>
         <el-tag :type="gradeTagType(air.pm25Grade)" size="small" effect="light"> PM2.5 {{ air.pm25 }} · {{ air.pm25Grade }} </el-tag>
       </div>
-      <p v-else class="wc-empty">불러오는 중...</p>
+      <p v-else class="wc-empty">정보 없음</p>
     </div>
 
     <!-- 상세 페이지에 있던 5일 예보 (카드에서는 4일치 요약) -->
@@ -126,7 +134,7 @@ const shortDate = (date) => {
           <span class="wc-fc-temp">{{ toDisplay(day.temp) }}{{ configStore.unitSymbol }}</span>
         </li>
       </ul>
-      <p v-else class="wc-empty">불러오는 중...</p>
+      <p v-else class="wc-empty">정보 없음</p>
     </div>
 
     <el-button class="wc-detail-btn" type="primary" plain @click.stop="emit('click-detail', city)"> 상세보기 </el-button>

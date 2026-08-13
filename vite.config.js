@@ -14,7 +14,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/airkorea': {
+      // 배포 설정(vercel.json · public/_redirects)과 같은 범위로 맞춘다
+      '/airkorea/B552584/ArpltnInforInqireSvc': {
         target: 'https://apis.data.go.kr',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/airkorea/, ''),

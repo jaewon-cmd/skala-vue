@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useWeatherStore } from '@/stores/weatherStore.js'
@@ -12,19 +12,27 @@ const router = useRouter()
 const weatherStore = useWeatherStore()
 const configStore = useConfigStore()
 
-const { regionCache, isRegionLoading, regionError } = storeToRefs(weatherStore)
+const { regionCache, isRegionLoading, regionError, airkoreaByRegion, isAirkoreaLoading, airkoreaError } = storeToRefs(weatherStore)
 
-// URL 파라미터로 넘어온 지역 id
-const regionId = route.params.cityId
+// URL 파라미터로 넘어온 지역 id.
+// 상세에서 다른 상세로 이동하면 컴포넌트가 재사용되므로, 한 번 읽고 끝내면
+// 주소만 바뀌고 내용은 이전 지역 그대로 남는다. 그래서 반응형으로 둔다.
+const regionId = computed(() => route.params.cityId)
 
-const region = computed(() => findRegion(regionId))
+const region = computed(() => findRegion(regionId.value))
 
 // 캐시에 담긴 조회 결과를 꺼내 쓴다 (홈에서 이미 본 지역이면 즉시 표시된다)
-const entry = computed(() => regionCache.value[regionId] ?? null)
+const entry = computed(() => regionCache.value[regionId.value] ?? null)
 const current = computed(() => entry.value?.current ?? null)
 const air = computed(() => entry.value?.air ?? null)
 const hourly = computed(() => entry.value?.hourly ?? [])
 const daily = computed(() => entry.value?.daily ?? [])
+
+// 에어코리아는 시도 단위로 값을 주므로 지역이 속한 시도로 찾는다
+const airkorea = computed(() => {
+  const sido = region.value?.sido
+  return sido ? (airkoreaByRegion.value[sido] ?? null) : null
+})
 
 // 섭씨 값을 현재 표시 단위로 변환
 const toDisplay = (celsius) => {
@@ -55,12 +63,22 @@ const goBack = () => {
   router.push('/')
 }
 
-// 주소창에 직접 입력하거나 새로고침해서 캐시가 비어 있으면 그때 받아온다
-onMounted(() => {
-  if (region.value && !entry.value) {
-    weatherStore.fetchRegion(regionId)
-  }
-})
+// 처음 진입할 때와 다른 지역으로 바뀔 때 모두 데이터를 맞춘다.
+// 캐시가 비어 있으면(주소 직접 입력·새로고침) 그때 받아온다.
+watch(
+  regionId,
+  (id) => {
+    if (!findRegion(id)) {
+      return
+    }
+    if (!regionCache.value[id]) {
+      weatherStore.fetchRegion(id)
+    }
+    // 관측소 실측값은 별도 API라 따로 받아온다
+    weatherStore.fetchAirkorea(id)
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -96,13 +114,50 @@ onMounted(() => {
 
       <section class="wd-section glass-card">
         <h3 class="wd-section-title">미세먼지</h3>
-        <div v-if="air" class="wd-air">
-          <el-tag :type="gradeTagType(air.pm10Grade)" size="large" effect="light"> 미세먼지(PM10) {{ air.pm10 }}㎍/㎥ · {{ air.pm10Grade }} </el-tag>
-          <el-tag :type="gradeTagType(air.pm25Grade)" size="large" effect="light">
-            초미세먼지(PM2.5) {{ air.pm25 }}㎍/㎥ · {{ air.pm25Grade }}
-          </el-tag>
+        <p class="wd-source-lead">같은 항목을 예측 모델과 관측소 실측, 두 출처로 비교합니다.</p>
+
+        <div class="wd-sources">
+          <!-- 출처 1: OpenWeather (모델 예측값, 좌표 기반) -->
+          <div class="wd-source">
+            <div class="wd-source-head">
+              <span class="wd-source-name">OpenWeather</span>
+              <el-tag size="small" effect="plain" type="info">모델 예측</el-tag>
+            </div>
+            <div v-if="air" class="wd-air">
+              <el-tag :type="gradeTagType(air.pm10Grade)" effect="light"> PM10 {{ air.pm10 }} · {{ air.pm10Grade }} </el-tag>
+              <el-tag :type="gradeTagType(air.pm25Grade)" effect="light"> PM2.5 {{ air.pm25 }} · {{ air.pm25Grade }} </el-tag>
+            </div>
+            <p v-else class="wd-empty">불러오지 못했습니다.</p>
+            <p class="wd-source-note">{{ region.name }} 좌표 기준</p>
+          </div>
+
+          <!-- 출처 2: 에어코리아 (관측소 실측값, 시도 단위) -->
+          <div class="wd-source">
+            <div class="wd-source-head">
+              <span class="wd-source-name">에어코리아</span>
+              <el-tag size="small" effect="plain" type="success">관측소 실측</el-tag>
+            </div>
+            <p v-if="isAirkoreaLoading" class="wd-empty">불러오는 중입니다...</p>
+            <div v-else-if="airkorea" class="wd-air">
+              <el-tag v-if="airkorea.pm10 != null" :type="gradeTagType(airkorea.pm10Grade)" effect="light">
+                PM10 {{ airkorea.pm10 }} · {{ airkorea.pm10Grade }}
+              </el-tag>
+              <el-tag v-if="airkorea.pm25 != null" :type="gradeTagType(airkorea.pm25Grade)" effect="light">
+                PM2.5 {{ airkorea.pm25 }} · {{ airkorea.pm25Grade }}
+              </el-tag>
+            </div>
+            <p v-else class="wd-empty">{{ airkoreaError ?? '실측값이 없습니다.' }}</p>
+            <p v-if="airkorea" class="wd-source-note">
+              {{ airkorea.sido }} 지역 측정소 {{ airkorea.stationCount }}곳 평균
+              <span v-if="airkorea.measuredAt"> · {{ airkorea.measuredAt }} 기준</span>
+            </p>
+          </div>
         </div>
-        <p v-else class="wd-empty">미세먼지 정보를 불러오지 못했습니다.</p>
+
+        <p class="wd-source-caveat">
+          에어코리아는 시 단위가 아닌 시도 단위로만 값을 제공하므로, {{ region.name }}의 실측값은 {{ region.sido }} 전체 측정소의 평균입니다. 두
+          수치가 다른 것은 측정 방식과 범위가 다르기 때문입니다.
+        </p>
       </section>
 
       <section class="wd-section glass-card">
@@ -214,6 +269,47 @@ onMounted(() => {
   margin: 0;
   font-size: 13px;
   color: #c0c4cc;
+}
+
+.wd-source-lead {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #606266;
+}
+.wd-sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.wd-source {
+  padding: 14px;
+  background: #f5f7fa;
+  border-radius: 12px;
+}
+.wd-source-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.wd-source-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2d3d;
+}
+.wd-source-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #909399;
+}
+.wd-source-caveat {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  background: #fdf6ec;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #b88230;
 }
 
 .wd-hourly {

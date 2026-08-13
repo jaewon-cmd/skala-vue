@@ -43,3 +43,6 @@ __screenshots__/
 .env.local
 .env.*.local
 !.env.example
+
+# Claude Code 작업 디렉터리
+.claude/

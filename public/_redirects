@@ -1,5 +1,7 @@
-# 에어코리아 API 중계 (개발 서버의 vite proxy와 같은 역할)
-/airkorea/*  https://apis.data.go.kr/:splat  200
+# 에어코리아 대기오염정보 API만 중계한다.
+# 경로를 넓게 열어 두면 아무 주소나 우리 도메인을 거쳐 호출할 수 있게 되므로,
+# 실제로 쓰는 엔드포인트로 범위를 좁혔다.
+/airkorea/B552584/ArpltnInforInqireSvc/*  https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/:splat  200
 
 # 그 외 모든 경로는 index.html로 넘겨 Vue Router가 처리 (반드시 마지막)
 /*  /index.html  200

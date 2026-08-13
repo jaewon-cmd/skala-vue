@@ -14,8 +14,7 @@ import { findRegion } from '@/constants/regions.js'
 
 const API_KEY = import.meta.env.VITE_OWM_KEY
 
-// 에어코리아 대기오염정보 서비스키.
-// 미세먼지를 좌표 기반(OpenWeather)으로 옮기면서 지금은 호출되지 않는다.
+// 에어코리아 대기오염정보 서비스키 (상세 화면의 관측소 실측값 조회에 사용)
 const AIR_KEY = import.meta.env.VITE_AIR_KEY
 
 // 이전 버전에서 쓰던 고정 도시 목록 (통계 화면 전용)
@@ -122,6 +121,12 @@ export const useWeatherStore = defineStore('weather', () => {
   const regionCache = ref({})
 
   const selectedRegion = computed(() => findRegion(selectedRegionId.value))
+
+  // ===== 에어코리아 실측 (지역 id -> 측정값) =====
+  // OpenWeather는 모델 예측값이고 이쪽은 관측소 실측값이라, 상세 화면에서 나란히 비교한다.
+  const airkoreaByRegion = ref({})
+  const isAirkoreaLoading = ref(false)
+  const airkoreaError = ref(null)
 
   // ===== 날짜별 조회 =====
   // 지역 id -> ('날짜 시간' -> 그 시각의 날씨) 형태로 쌓아둔다
@@ -367,6 +372,81 @@ export const useWeatherStore = defineStore('weather', () => {
     }
   }
 
+  // 선택한 지역이 속한 시도의 실시간 측정소 값을 에어코리아에서 받아 평균 낸다.
+  //
+  // 이 API는 실패할 때도 HTTP 200으로 응답하고, 본문만 전혀 다른 모양
+  // ({ OpenAPI_ServiceResponse: { cmmMsgHeader: { errMsg } } })으로 돌아온다.
+  // 그래서 상태 코드가 아니라 본문 형태를 보고 성공 여부를 판단해야 한다.
+  const fetchAirkorea = async (regionId) => {
+    const region = findRegion(regionId)
+    if (!region?.sido) {
+      return
+    }
+    // 같은 시도를 방금 받아 뒀으면 다시 부르지 않는다.
+    // 다만 '실시간 실측'이므로 10분이 지나면 다시 받아 최신값을 유지한다.
+    const cached = airkoreaByRegion.value[region.sido]
+    if (cached && Date.now() - cached.fetchedAt < 10 * 60 * 1000) {
+      return
+    }
+
+    isAirkoreaLoading.value = true
+    airkoreaError.value = null
+    try {
+      const res = await axios.get('/airkorea/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty', {
+        params: {
+          serviceKey: AIR_KEY,
+          returnType: 'json',
+          numOfRows: 100,
+          pageNo: 1,
+          sidoName: region.sido,
+          ver: '1.0',
+        },
+      })
+
+      const items = res.data?.response?.body?.items
+      if (!Array.isArray(items)) {
+        const errMsg = res.data?.OpenAPI_ServiceResponse?.cmmMsgHeader?.errMsg
+        throw new Error(errMsg ?? '예상과 다른 응답 형식')
+      }
+
+      // 측정소마다 값이 '-'이거나 통신장애로 비어 있을 수 있어 숫자만 걸러 평균 낸다
+      // 값이 없는 측정소는 ''이나 '-'로 오는데, Number('')는 0이라 그대로 평균에 섞이면
+      // 실제보다 농도가 낮게 나온다. 숫자로 읽히는 문자열만 남긴다.
+      const toNumbers = (key) =>
+        items
+          .map((it) => it[key])
+          .filter((v) => typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)))
+          .map(Number)
+      const pm10List = toNumbers('pm10Value')
+      const pm25List = toNumbers('pm25Value')
+      if (pm10List.length === 0 && pm25List.length === 0) {
+        throw new Error('측정값이 비어 있음')
+      }
+
+      const avg = (arr) => Math.round(arr.reduce((a, b) => a + b, 0) / arr.length)
+      const pm10 = pm10List.length > 0 ? avg(pm10List) : null
+      const pm25 = pm25List.length > 0 ? avg(pm25List) : null
+
+      airkoreaByRegion.value[region.sido] = {
+        sido: region.sido,
+        pm10,
+        pm25,
+        pm10Grade: pm10 != null ? pm10Grade(pm10) : '-',
+        pm25Grade: pm25 != null ? pm25Grade(pm25) : '-',
+        // 몇 개 측정소를 평균 냈는지, 언제 측정한 값인지 함께 보여 준다.
+        // 두 항목의 측정소 수가 다를 수 있어 더 많은 쪽을 기준으로 삼는다.
+        stationCount: Math.max(pm10List.length, pm25List.length),
+        measuredAt: items[0]?.dataTime ?? null,
+        fetchedAt: Date.now(),
+      }
+    } catch (e) {
+      airkoreaError.value = '에어코리아 실측값을 불러오지 못했습니다.'
+      console.error('에어코리아 API 에러:', e)
+    } finally {
+      isAirkoreaLoading.value = false
+    }
+  }
+
   // 고른 지역들의 5일 예보와 시간별 미세먼지를 받아 날짜/시간별로 정리한다.
   // 고정 목록을 한꺼번에 받지 않고 필요한 지역만 받으므로, 지역을 늘려도 호출량이 함께 늘지 않는다.
   // 이미 받아둔 지역은 건너뛴다.
@@ -483,6 +563,10 @@ export const useWeatherStore = defineStore('weather', () => {
     recentIds,
     regionCache,
     fetchRegion,
+    airkoreaByRegion,
+    isAirkoreaLoading,
+    airkoreaError,
+    fetchAirkorea,
     rangeByCity,
     rangeDates,
     rangeTimesByDate,

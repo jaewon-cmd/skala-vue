@@ -1,6 +1,9 @@
 {
   "rewrites": [
-    { "source": "/airkorea/:path*", "destination": "https://apis.data.go.kr/:path*" },
+    {
+      "source": "/airkorea/B552584/ArpltnInforInqireSvc/:path*",
+      "destination": "https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

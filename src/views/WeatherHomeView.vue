@@ -1,11 +1,13 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useWeatherStore } from '@/stores/weatherStore.js'
 import { useConfigStore } from '@/stores/configStore.js'
 import { REGIONS, searchRegions, findRegion } from '@/constants/regions.js'
 import WeatherMap from '@/components/layout/WeatherMap.vue'
 
+const router = useRouter()
 const weatherStore = useWeatherStore()
 const configStore = useConfigStore()
 
@@ -13,6 +15,10 @@ const { selectedRegionId, currentWeather, currentAir, hourly, daily, isRegionLoa
   storeToRefs(weatherStore)
 
 const keyword = ref('')
+
+// 낮 진행 막대가 멈춰 보이지 않도록 1분마다 현재 시각을 갱신한다
+const now = ref(Date.now())
+let clockTimer = null
 
 // 지도에 넘길 현재 선택 지역 (좌표가 필요해 REGIONS에서 다시 찾는다)
 const mapRegion = computed(() => findRegion(selectedRegionId.value))
@@ -43,6 +49,11 @@ const handleVisibleChange = (visible) => {
 
 const handleSelect = (regionId) => {
   weatherStore.fetchRegion(regionId)
+}
+
+// 지금 보고 있는 지역의 상세 화면으로 이동한다
+const goDetail = () => {
+  router.push('/weather/' + selectedRegionId.value)
 }
 
 // 최근 본 지역 (지금 보고 있는 지역은 제외). 캐시에서 이름만 뽑아 쓴다.
@@ -147,7 +158,14 @@ const tempRange = computed(() => {
   const temps = hourly.value.map((slot) => slot.temp)
   const min = Math.min(...temps)
   const max = Math.max(...temps)
-  return { min, max, gap: Math.round((max - min) * 10) / 10 }
+
+  // 일교차는 기온이 아니라 '차이값'이다.
+  // 화씨로 바꿀 때는 배율(9/5)만 적용하고 +32 오프셋은 더하지 않는다.
+  const gapCelsius = max - min
+  const gap = configStore.unit === 'fahrenheit' ? (gapCelsius * 9) / 5 : gapCelsius
+
+  // gap은 화면 표시용, gapCelsius는 등급 판정용 (등급 기준이 섭씨로 정의되어 있다)
+  return { min, max, gap: Math.round(gap * 10) / 10, gapCelsius }
 })
 
 // 일교차가 크면 옷차림을 챙겨야 하므로 그 기준으로 나눈다
@@ -188,8 +206,8 @@ const dayProgress = computed(() => {
   if (!w?.sunrise || !w?.sunset) {
     return 0
   }
-  const now = Date.now() / 1000
-  const ratio = ((now - w.sunrise) / (w.sunset - w.sunrise)) * 100
+  const seconds = now.value / 1000
+  const ratio = ((seconds - w.sunrise) / (w.sunset - w.sunrise)) * 100
   return Math.min(100, Math.max(0, Math.round(ratio)))
 })
 
@@ -206,6 +224,13 @@ const dayLabel = (date) => {
 
 onMounted(() => {
   weatherStore.fetchRegion(selectedRegionId.value)
+  clockTimer = setInterval(() => {
+    now.value = Date.now()
+  }, 60 * 1000)
+})
+
+onUnmounted(() => {
+  clearInterval(clockTimer)
 })
 </script>
 
@@ -261,6 +286,8 @@ onMounted(() => {
                 <span class="wh-metric-value">{{ currentAir ? currentAir.pm10Grade : '-' }}</span>
               </div>
             </div>
+
+            <el-button class="wh-detail-btn" type="primary" plain @click="goDetail"> {{ currentWeather.name }} 상세 보기 </el-button>
           </section>
 
           <section v-if="currentAir" class="wh-section glass-card">
@@ -396,8 +423,8 @@ onMounted(() => {
             <span class="wh-mini-icon">🌡️</span>
             <p class="wh-mini-value">{{ tempRange.gap }}<span class="wh-mini-unit">°</span></p>
           </div>
-          <el-tag :type="tempGapLevel(tempRange.gap).type" size="small" effect="light" round>
-            {{ tempGapLevel(tempRange.gap).label }}
+          <el-tag :type="tempGapLevel(tempRange.gapCelsius).type" size="small" effect="light" round>
+            {{ tempGapLevel(tempRange.gapCelsius).label }}
           </el-tag>
           <p class="wh-mini-note">
             최저 {{ toDisplay(tempRange.min) }}{{ configStore.unitSymbol }} · 최고 {{ toDisplay(tempRange.max) }}{{ configStore.unitSymbol }}
@@ -523,6 +550,11 @@ onMounted(() => {
 }
 
 /* 간격은 부모의 flex gap이 담당하므로 여백을 따로 주지 않는다 */
+.wh-detail-btn {
+  width: 100%;
+  margin-top: 16px;
+}
+
 .wh-section {
   margin: 0;
 }

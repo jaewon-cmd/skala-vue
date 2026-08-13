@@ -3,6 +3,23 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
+// Leaflet은 기본 마커 이미지를 상대 경로 문자열로 참조해서, 그대로 두면 번들에 이미지가
+// 포함되지 않는다. 아래처럼 import 해야 번들러가 이미지를 결과물에 넣고 경로도 바꿔 준다.
+import markerIcon from 'leaflet/dist/images/marker-icon.png'
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+
+// mergeOptions만으로는 부족하다. Leaflet의 _getIconUrl이 스스로 찾아낸 imagePath를
+// 우리가 넘긴 경로 앞에 한 번 더 붙여 버려서 잘못된 주소가 만들어진다.
+// 그 동작을 먼저 제거해야 import한 경로가 그대로 쓰인다.
+delete L.Icon.Default.prototype._getIconUrl
+
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+})
+
 const props = defineProps({
   // 지도 중심으로 잡을 지역 { name, lat, lon }
   region: {
