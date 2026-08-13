@@ -34,12 +34,7 @@ const statusIcon = (status) => {
     <section class="search-box">
       <h3>🔍 도시 검색</h3>
       <!-- :value + @input : v-model을 풀어 쓴 양방향 바인딩 -->
-      <input
-        type="text"
-        :value="searchQuery"
-        @input="(e) => (searchQuery = e.target.value)"
-        placeholder="검색할 도시 이름 입력"
-      />
+      <input type="text" :value="searchQuery" @input="(e) => (searchQuery = e.target.value)" placeholder="검색할 도시 이름 입력" />
       <p>
         검색 중인 도시: <strong>{{ searchQuery || '없음' }}</strong>
       </p>
@@ -69,9 +64,7 @@ const statusIcon = (status) => {
           <span v-else class="badge cool">❄️ 선선함 (25도 미만)</span>
 
           <!-- .stop : 카드 클릭 버블링 차단 -->
-          <button class="btn-detail" @click.stop="showDetail(item.name, item.status)">
-            상세보기
-          </button>
+          <button class="btn-detail" @click.stop="showDetail(item.name, item.status)">상세보기</button>
         </div>
       </div>
     </section>

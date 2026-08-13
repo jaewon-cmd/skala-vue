@@ -37,3 +37,9 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# 환경 변수 (API 키) — .env.example 은 공유용이라 제외
+.env
+.env.local
+.env.*.local
+!.env.example

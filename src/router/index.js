@@ -23,16 +23,22 @@ const router = createRouter({
       component: () => import('../views/WeatherAboutView.vue'),
     },
     {
-      // 정의되지 않은 모든 경로 처리 (Catch-all, 반드시 마지막)
-      path: '/:pathMatch(.*)*',
-      name: 'not-found',
-      component: () => import('../views/NotFoundView.vue'),
-    },
-    {
       // 날씨 통계 페이지 (지연 로딩)
       path: '/stats',
       name: 'stats',
       component: () => import('../views/WeatherStatsView.vue'),
+    },
+    {
+      // 날짜별 조회 페이지 (지연 로딩)
+      path: '/range',
+      name: 'range',
+      component: () => import('../views/WeatherRangeView.vue'),
+    },
+    {
+      // 정의되지 않은 모든 경로 처리 (Catch-all, 반드시 마지막)
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('../views/NotFoundView.vue'),
     },
   ],
 })

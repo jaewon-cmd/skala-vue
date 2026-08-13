@@ -7,7 +7,7 @@ const goHome = () => router.push('/')
 </script>
 
 <template>
-  <div class="notfound-wrap">
+  <div class="notfound-wrap glass-card">
     <div class="code">404</div>
     <p class="msg">요청하신 페이지를 찾을 수 없습니다.</p>
     <button class="home-btn" @click="goHome">메인 대시보드로 돌아가기</button>
@@ -17,12 +17,14 @@ const goHome = () => router.push('/')
 <style scoped>
 .notfound-wrap {
   max-width: 500px;
-  margin: 60px auto;
+  margin: 0 auto;
+  padding: 48px 24px;
   text-align: center;
 }
 .code {
   font-size: 80px;
   font-weight: 800;
+  line-height: 1.1;
   color: #cbd5e1;
 }
 .msg {

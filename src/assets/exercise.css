@@ -1,7 +1,31 @@
+/* 0. 유리 카드 — 3D 날씨 배경 위에 올라가는 반투명 패널.
+   섹션마다 하나씩 씌워서 카드 사이로 배경이 비쳐 보이게 한다.
+   농도는 AppContainer의 --panel-alpha 하나로 전부 조절된다. */
+.glass-card {
+  background: rgba(255, 255, 255, var(--panel-alpha, 0.85));
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 18px;
+  padding: 20px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(31, 45, 61, 0.12);
+  box-sizing: border-box;
+}
+
+/* 카드 밖 하늘 위에 바로 놓이는 제목용 */
+.on-sky-title {
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.on-sky-sub {
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+}
+
 /* 1. 전체 최외곽 컨테이너 레벨 정의 */
 .app-container {
-  max-width: 900px;
-  margin: 40px 10px 40px 10px;
+  width: 100%;
+  margin: 40px 0;
   padding: 30px 40px;
   background-color: #ffffff;
   border-radius: 12px;
@@ -79,7 +103,7 @@ h1 {
 
 /* 과제페이지 스타일 - Component 분리 후 각 페이지별로 이동 */
 .dashboard-wrapper {
-  width: 600px;
+  width: 100%;
   margin: 0 auto;
 }
 .search-box,

@@ -18,18 +18,14 @@ const weatherList = ref([
 
 /* 2. computed - 검색어가 이름에 포함된 도시만 필터링 */
 const filteredWeatherList = computed(() =>
-  weatherList.value.filter(
-    (city) => city.name.includes(searchQuery.value) && city.temp >= minTemp.value,
-  ),
+  weatherList.value.filter((city) => city.name.includes(searchQuery.value) && city.temp >= minTemp.value),
 ) /* 3-1. watch - 상태바(selectedCityInfo)가 바뀔 때마다 콘솔 로그 */
 watch(selectedCityInfo, (newVal, oldVal) => {
   console.log(`👁️ [상태바 변경] "${oldVal}" ➡️ "${newVal}"`)
 })
 watch(minTemp, (newVal, oldVal) => {
   // (추가 watcher) 최소 기온 필터가 바뀔 때마다 로그
-  console.log(
-    `🌡️ [필터 변경] 최소 기온 ${oldVal}°C ➡️ ${newVal}°C (${filteredWeatherList.value.length}곳 표시)`,
-  )
+  console.log(`🌡️ [필터 변경] 최소 기온 ${oldVal}°C ➡️ ${newVal}°C (${filteredWeatherList.value.length}곳 표시)`)
 })
 
 /* 3-2. watchEffect - 검색어(searchQuery)를 타이핑할 때마다 추적 */
@@ -70,12 +66,7 @@ const showDetail = (name, status) => {
     <!-- 검색 -->
     <section class="search-box">
       <h3>🔍 도시 검색</h3>
-      <input
-        type="text"
-        :value="searchQuery"
-        @input="(e) => (searchQuery = e.target.value)"
-        placeholder="검색할 도시 이름 입력"
-      />
+      <input type="text" :value="searchQuery" @input="(e) => (searchQuery = e.target.value)" placeholder="검색할 도시 이름 입력" />
       <div class="temp-filter">
         <span>최소 기온:</span>
         <input type="number" v-model.number="minTemp" /> °C 이상
@@ -105,9 +96,7 @@ const showDetail = (name, status) => {
       <h3>🏙️ 지역별 날씨 현황</h3>
 
       <!-- 4. 검색 결과 없을 때 안내 -->
-      <div v-if="filteredWeatherList.length === 0" class="empty">
-        🔍 검색 결과와 일치하는 도시가 없습니다.
-      </div>
+      <div v-if="filteredWeatherList.length === 0" class="empty">🔍 검색 결과와 일치하는 도시가 없습니다.</div>
 
       <!-- 4. 결과 있으면 카드 출력 (검색어 비면 computed가 전체 반환) -->
       <div v-else class="card-grid">
@@ -129,9 +118,7 @@ const showDetail = (name, status) => {
           <span v-if="item.temp >= 25" class="badge hot">🔥 더움 (25도 이상)</span>
           <span v-else class="badge cool">❄️ 선선함 (25도 미만)</span>
 
-          <button class="btn-detail" @click.stop="showDetail(item.name, item.status)">
-            상세보기
-          </button>
+          <button class="btn-detail" @click.stop="showDetail(item.name, item.status)">상세보기</button>
         </div>
       </div>
     </section>

@@ -21,11 +21,7 @@ const weatherList = ref([
 ])
 
 /* 2. computed — 검색어 + 최소기온 필터 */
-const filteredWeatherList = computed(() =>
-  weatherList.value.filter(
-    (city) => city.name.includes(searchQuery.value) && city.temp >= minTemp.value,
-  ),
-)
+const filteredWeatherList = computed(() => weatherList.value.filter((city) => city.name.includes(searchQuery.value) && city.temp >= minTemp.value))
 /* 5. 추가 computed — 평균 기온 */
 const averageTemp = computed(() => {
   const sum = weatherList.value.reduce((acc, c) => acc + c.temp, 0)
@@ -34,9 +30,7 @@ const averageTemp = computed(() => {
 
 /* 3. watch / watchEffect */
 watch(selectedCityInfo, (n, o) => console.log(`👁️ [상태바 변경] "${o}" ➡️ "${n}"`))
-watch(minTemp, (n, o) =>
-  console.log(`🌡️ [필터 변경] ${o}°C ➡️ ${n}°C (${filteredWeatherList.value.length}곳)`),
-)
+watch(minTemp, (n, o) => console.log(`🌡️ [필터 변경] ${o}°C ➡️ ${n}°C (${filteredWeatherList.value.length}곳)`))
 watch(clickCount, (c) => console.log(`🖱️ [클릭 횟수] 총 ${c}번`))
 watchEffect(() => console.log(`🔍 [검색어 추적] "${searchQuery.value}"`))
 
@@ -47,20 +41,14 @@ const handleSelectCard = (name) => {
   selectedCityInfo.value = `${name}이(가) 선택되었습니다.`
   clickCount.value++
 }
-const handleClickDetail = (city) =>
-  window.alert(`${city.name}의 현재 날씨는 [${city.status}] 상태입니다.`)
+const handleClickDetail = (city) => window.alert(`${city.name}의 현재 날씨는 [${city.status}] 상태입니다.`)
 </script>
 
 <template>
   <div class="parent-wrap">
     <!-- 검색 박스: BaseDashboardCard(slot)로 감싸 SearchBar 주입 -->
     <BaseDashboardCard title="🔍 도시 검색">
-      <SearchBar
-        :search-query="searchQuery"
-        :min-temp="minTemp"
-        @update-query="handleUpdateQuery"
-        @update-min-temp="handleUpdateMinTemp"
-      />
+      <SearchBar :search-query="searchQuery" :min-temp="minTemp" @update-query="handleUpdateQuery" @update-min-temp="handleUpdateMinTemp" />
     </BaseDashboardCard>
 
     <!-- 정보 패널 (평균기온·클릭수·검색결과) -->
@@ -80,9 +68,7 @@ const handleClickDetail = (city) =>
 
     <!-- 리스트 박스: slot에 WeatherCard 목록 주입 -->
     <BaseDashboardCard title="🏙️ 지역별 날씨 현황">
-      <div v-if="filteredWeatherList.length === 0" class="empty">
-        🔍 검색 결과와 일치하는 도시가 없습니다.
-      </div>
+      <div v-if="filteredWeatherList.length === 0" class="empty">🔍 검색 결과와 일치하는 도시가 없습니다.</div>
       <div v-else class="card-grid">
         <WeatherCard
           v-for="item in filteredWeatherList"
